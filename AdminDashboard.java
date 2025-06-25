@@ -1,6 +1,7 @@
 package admin;
 
 import chat.AdminChatPanel;
+import chat.ChatClientListener;
 import chat.ChatClientSocket;
 import goicuoc.PackageManagementPanel;
 import goicuoc.SubscriptionPanel;
@@ -14,6 +15,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 
@@ -67,14 +69,22 @@ public class AdminDashboard extends JFrame {
 		try {
 			Socket socket = new Socket("localhost", 5000);
 			ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-			clientSocket = new ChatClientSocket(out);
+			ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 			
+			// Gửi userId đầu tiên để đăng ký
+			out.writeObject(currentUser.getId() + ":login");
+			out.flush();
+			
+			clientSocket = new ChatClientSocket(out);
 			AdminChatPanel adminChatPanel = new AdminChatPanel(currentUser.getId(), clientSocket);
 			clientSocket.setAdminPanel(adminChatPanel);
 			chatPanel = adminChatPanel;
 			
-			contentPanel.add(chatPanel, "Chat");
+			// Bắt đầu lắng nghe tin nhắn đến
+			ChatClientListener listener = new ChatClientListener(in, clientSocket);
+			listener.start();
 			
+			contentPanel.add(chatPanel, "Chat");
 		} catch (IOException e) {
 			JOptionPane.showMessageDialog(this, "Không thể kết nối đến server chat!", "Lỗi", JOptionPane.ERROR_MESSAGE);
 			contentPanel.add(chatFallbackPanel, "Chat");

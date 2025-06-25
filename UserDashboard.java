@@ -2,13 +2,13 @@ package users;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.Socket;
 import java.util.List;
 
 import PASS.ChangePasswordPanel;
 import PASS.SupportPanel;
+import chat.ChatClientListener;
 import chat.ChatClientSocket;
 import chat.ChatPanel;
 
@@ -50,12 +50,20 @@ public class UserDashboard extends JFrame {
 		try {
 			Socket socket = new Socket("localhost", 5000);
 			ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-			this.clientSocket = new ChatClientSocket(out); // sử dụng this.clientSocket
+			ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+			out.writeObject(user.getId() + ":login");
+			
+			this.clientSocket = new ChatClientSocket(out);
 			
 			// ChatPanel
 			ChatPanel chatPanel = new ChatPanel(currentUser.getId(), clientSocket);
 			clientSocket.setUserPanel(chatPanel);
 			mainPanel.add(chatPanel, "Chat");
+			
+			// Khởi động listener
+			ChatClientListener listener = new ChatClientListener(in, clientSocket);
+			new Thread(listener).start();
+			
 		} catch (IOException e) {
 			JOptionPane.showMessageDialog(this, "Không thể kết nối server chat", "Lỗi", JOptionPane.ERROR_MESSAGE);
 			mainPanel.add(new JLabel("Không thể khởi tạo chat"), "Chat");
@@ -67,7 +75,6 @@ public class UserDashboard extends JFrame {
 		add(mainPanel, BorderLayout.CENTER);
 		setVisible(true);
 	}
-	
 	
 	private JPanel createSidebar(User user) {
 		JPanel panel = new JPanel();
@@ -154,5 +161,4 @@ public class UserDashboard extends JFrame {
 			pendingTransactionLabel.setText("Giao dịch đang chờ: " + pendingCount);
 		});
 	}
-
 }
